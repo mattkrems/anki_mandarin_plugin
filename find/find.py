@@ -1,40 +1,20 @@
-import re
+import re, csv
 
 # do a search in the dictionary for an English word
 def searchFile(file, query):
     f = open(file, 'r')
-    lines = f.read() #lines is of type string
 
     query = re.compile(query, re.IGNORECASE) #make case not matter
 
     query_lines = [] #lines that contain the search term
-    for a in list(re.finditer(query, lines)):
-
-        line_start = a.start()
-        line_end = a.end()
-        
-        # search term must be at very beginning of defintion
-        # will find search term, but there must be a " /" before it if
-        # it is at the beginning of the definition
-        if lines[line_start - 2:line_start] == " /":
-
-            # grab the rest of the definition
-            i = 1
-            while(1):
-                if (lines[line_start-i] == '\n'):
-                    line_start = a.start()-i+1
-                    break
-                i = i + 1
-
-            i = 1
-            while(1):
-                if (lines[line_end + i] == '\n'):
-                    line_end = a.end()+i
-                    break
-                i = i + 1
-
-            # add each one to a list
-            query_lines.append(lines[line_start:line_end])
+    for line in f.readlines():
+        match = re.search(query, line)
+        if (match):
+            if line[match.start()-1] == line[match.end()] == "/":
+                query_lines.append(line)
+    
+    for i in range(len(query_lines)):
+        print query_lines[i]
 
     if len(query_lines) == 0:
         print "no results"
@@ -42,14 +22,17 @@ def searchFile(file, query):
     # split each definition its parts (eng, pin, simp, trad)
     query_split = CEDICT_split(query_lines)
 
-    # sort to make the ones with the shortest match appear first
-    # ex. if searching for "team", "team mate" would appear before
-    #     "team member"
-    sorted_list = selSortEng(query_split)
+    # make a list of Chinese words and their frequencies
+    freq_list = cons_freq_comp()
 
-    for i in range(len(sorted_list)):
-    	for j in range(4):
-            print sorted_list[i][j]
+    # find the most frequent instance of a word
+    top_hanz, top = comp_freq(query_split, freq_list)
+
+    print "the best choice is:", top_hanz, " (", top, ")"
+    for i in range(len(query_split)):
+        print query_split[i][2], query_split[i][1]
+
+
     return None
 
 # sort to make the definitions with the shortest match first
@@ -61,6 +44,44 @@ def selSortEng(list):
                 list[i] = list[j]
                 list[j] = temp
     return list
+
+def cons_freq_comp():
+
+    # construct frequency list
+    f = open('SUBTLEX-CH-WF.csv', 'r')
+    f.readline()
+    f.readline()
+    f.readline()
+
+    reader = csv.reader(f, delimiter=',')
+
+    row_data=[]
+    for row in reader:
+        row_data.append(row)
+
+    return row_data
+
+def comp_freq(sorted_list, freq_list):
+    top = 0
+    top_hanz = 0
+    for i in range(len(sorted_list)):
+        for j in range(len(freq_list)):
+            #print sorted_list[i][2]
+            #print freq_list[j][0]
+            #print ""
+            if (sorted_list[i][2] == freq_list[j][0]):
+                if (int(freq_list[j][1]) >= top):
+                    top = int(freq_list[j][1])
+                    top_hanz = freq_list[j][0]
+                break
+            
+    return top_hanz, top 
+
+    for i in range(len(freq_list)):
+        #print i
+        if (hanzi == freq_list[i][0]):
+            print freq_list[i][0], freq_list[i][1]
+    
 
 # take the raw output from he dictionary and break it up into parts
 def CEDICT_split(query_lines):
